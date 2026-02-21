@@ -1,121 +1,100 @@
--- ======================
--- MOVIMIENTO Y SALTO (W / S / SPACE)
--- TOGGLE POR EJECUCIÓN
--- ======================
+-- =========================
+-- TOGGLE AUTO SHOOT
+-- =========================
 
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
--- ======================
--- TOGGLE GLOBAL
--- ======================
-_G.MoveGuiEnabled = not _G.MoveGuiEnabled
-
--- Si ya existe, destruir y salir
-local oldGui = PlayerGui:FindFirstChild("MoveButtons")
-if oldGui then
-    oldGui:Destroy()
+if _G.AUTO_SHOOT_LOOP then
+	_G.AUTO_SHOOT_LOOP = false
+	print("AutoShoot Murderer: OFF")
+	return
 end
 
-if not _G.MoveGuiEnabled then
-    print("❌ Move GUI desactivado")
-    return
+_G.AUTO_SHOOT_LOOP = true
+print("AutoShoot Murderer: ON")
+
+local SHOOT_INTERVAL = 0.1
+local MAX_DISTANCE = 1000
+
+-- =========================
+-- Función para verificar visibilidad
+-- =========================
+local function isVisible(origin, target)
+	local direction = (target.Position - origin.Position).Unit * MAX_DISTANCE
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	local result = Workspace:Raycast(origin.Position, direction, rayParams)
+
+	return not result or result.Instance:IsDescendantOf(target.Parent)
 end
 
-print("✅ Move GUI activado")
+-- =========================
+-- Función principal
+-- =========================
+local function autoShoot(character)
 
--- ======================
--- GUI
--- ======================
-local gui = Instance.new("ScreenGui")
-gui.Name = "MoveButtons"
-gui.ResetOnSpawn = false
-gui.Parent = PlayerGui
+	while _G.AUTO_SHOOT_LOOP and character and character.Parent do
 
--- ======================
--- BOTÓN ADELANTE (W)
--- ======================
-local forward = Instance.new("TextButton")
-forward.Size = UDim2.new(0, 80, 0, 80)
-forward.Position = UDim2.new(0.75, 0, 0.6, 0)
-forward.Text = "▲"
-forward.TextSize = 40
-forward.BackgroundColor3 = Color3.fromRGB(30,30,30)
-forward.TextColor3 = Color3.new(1,1,1)
-forward.Active = true
-forward.Draggable = true
-forward.Parent = gui
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local gun = character:FindFirstChild("Gun")
 
--- ======================
--- BOTÓN ATRÁS (S)
--- ======================
-local back = Instance.new("TextButton")
-back.Size = UDim2.new(0, 80, 0, 80)
-back.Position = UDim2.new(0.75, 0, 0.75, 0)
-back.Text = "▼"
-back.TextSize = 40
-back.BackgroundColor3 = Color3.fromRGB(30,30,30)
-back.TextColor3 = Color3.new(1,1,1)
-back.Active = true
-back.Draggable = true
-back.Parent = gui
+			for _, plr in pairs(Players:GetPlayers()) do
+				if not _G.AUTO_SHOOT_LOOP then break end
 
--- ======================
--- BOTÓN SALTAR (SPACE)
--- ======================
-local jump = Instance.new("TextButton")
-jump.Size = UDim2.new(0, 80, 0, 80)
-jump.Position = UDim2.new(0.85, 0, 0.675, 0)
-jump.Text = "⮝"
-jump.TextSize = 40
-jump.BackgroundColor3 = Color3.fromRGB(30,30,30)
-jump.TextColor3 = Color3.new(1,1,1)
-jump.Active = true
-jump.Draggable = true
-jump.Parent = gui
+				if plr ~= LocalPlayer and plr.Character then
+					local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+					local knife = plr.Character:FindFirstChild("Knife")
+						or (plr:FindFirstChild("Backpack") and plr.Backpack:FindFirstChild("Knife"))
 
--- ======================
--- FUNCIONES
--- ======================
-local function pressKey(key)
-    VirtualInputManager:SendKeyEvent(true, key, false, game)
+					if knife and targetHRP and isVisible(hrp, targetHRP) then
+
+						-- Equipar Gun si está en Backpack
+						if not gun then
+							local backpack = LocalPlayer:FindFirstChild("Backpack")
+							if backpack then
+								local toolGun = backpack:FindFirstChild("Gun")
+								if toolGun then
+									toolGun.Parent = character
+									gun = toolGun
+								end
+							end
+						end
+
+						-- Disparar si ya tenemos Gun equipada
+						if gun then
+							local shootRemote = gun:FindFirstChild("Shoot")
+							if shootRemote then
+								shootRemote:FireServer(
+									CFrame.new(hrp.Position, targetHRP.Position),
+									CFrame.new(targetHRP.Position)
+								)
+							end
+						end
+					end
+				end
+			end
+		end
+
+		task.wait(SHOOT_INTERVAL)
+	end
 end
 
-local function releaseKey(key)
-    VirtualInputManager:SendKeyEvent(false, key, false, game)
-end
+-- =========================
+-- Ejecutar
+-- =========================
 
--- ======================
--- CONTROLES
--- ======================
-forward.MouseButton1Down:Connect(function()
-    pressKey(Enum.KeyCode.W)
-end)
-forward.MouseButton1Up:Connect(function()
-    releaseKey(Enum.KeyCode.W)
-end)
-forward.MouseLeave:Connect(function()
-    releaseKey(Enum.KeyCode.W)
+task.spawn(function()
+	autoShoot(LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait())
 end)
 
-back.MouseButton1Down:Connect(function()
-    pressKey(Enum.KeyCode.S)
-end)
-back.MouseButton1Up:Connect(function()
-    releaseKey(Enum.KeyCode.S)
-end)
-back.MouseLeave:Connect(function()
-    releaseKey(Enum.KeyCode.S)
-end)
-
-jump.MouseButton1Down:Connect(function()
-    pressKey(Enum.KeyCode.Space)
-end)
-jump.MouseButton1Up:Connect(function()
-    releaseKey(Enum.KeyCode.Space)
-end)
-jump.MouseLeave:Connect(function()
-    releaseKey(Enum.KeyCode.Space)
+LocalPlayer.CharacterAdded:Connect(function(char)
+	if _G.AUTO_SHOOT_LOOP then
+		task.spawn(function()
+			autoShoot(char)
+		end)
+	end
 end)
