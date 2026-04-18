@@ -2,6 +2,8 @@
 -- CONFIG
 -- =========================
 
+getgenv().ONLY_EQUIPPED_KNIFE = getgenv().ONLY_EQUIPPED_KNIFE or false
+
 -- =========================
 -- TOGGLE AUTO SHOOT
 -- =========================
