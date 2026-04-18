@@ -21,20 +21,26 @@ end
 _G.AUTO_SHOOT_LOOP = true
 print("AutoShoot Murderer: ON")
 
-local SHOOT_INTERVAL = 0.1
-local MAX_DISTANCE = math.huge -- 🔥 distancia infinita
+local SHOOT_INTERVAL = 0.6
 
 -- =========================
--- Función para verificar visibilidad
+-- Función para verificar visibilidad (FIXED)
 -- =========================
 local function isVisible(origin, target)
-	local direction = (target.Position - origin.Position).Unit * MAX_DISTANCE
+	local direction = (target.Position - origin.Position)
+
 	local rayParams = RaycastParams.new()
 	rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.IgnoreWater = true
+
 	local result = Workspace:Raycast(origin.Position, direction, rayParams)
 
-	return not result or result.Instance:IsDescendantOf(target.Parent)
+	if result then
+		return result.Instance:IsDescendantOf(target.Parent)
+	end
+
+	return false
 end
 
 -- =========================
@@ -54,7 +60,7 @@ local function autoShoot(character)
 				if plr ~= LocalPlayer and plr.Character then
 					local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
 
-					-- 🔥 Knife con config
+					-- Knife config
 					local knife
 					if getgenv().ONLY_EQUIPPED_KNIFE then
 						knife = plr.Character:FindFirstChild("Knife")
