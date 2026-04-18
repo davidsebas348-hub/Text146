@@ -1,4 +1,10 @@
 -- =========================
+-- CONFIG
+-- =========================
+
+getgenv().ONLY_EQUIPPED_KNIFE = true -- true = solo si lo tiene en mano
+
+-- =========================
 -- TOGGLE AUTO SHOOT
 -- =========================
 
@@ -16,7 +22,7 @@ _G.AUTO_SHOOT_LOOP = true
 print("AutoShoot Murderer: ON")
 
 local SHOOT_INTERVAL = 0.1
-local MAX_DISTANCE = 1000
+local MAX_DISTANCE = math.huge -- 🔥 distancia infinita
 
 -- =========================
 -- Función para verificar visibilidad
@@ -47,8 +53,15 @@ local function autoShoot(character)
 
 				if plr ~= LocalPlayer and plr.Character then
 					local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
-					local knife = plr.Character:FindFirstChild("Knife")
-						or (plr:FindFirstChild("Backpack") and plr.Backpack:FindFirstChild("Knife"))
+
+					-- 🔥 Knife con config
+					local knife
+					if getgenv().ONLY_EQUIPPED_KNIFE then
+						knife = plr.Character:FindFirstChild("Knife")
+					else
+						knife = plr.Character:FindFirstChild("Knife")
+							or (plr:FindFirstChild("Backpack") and plr.Backpack:FindFirstChild("Knife"))
+					end
 
 					if knife and targetHRP and isVisible(hrp, targetHRP) then
 
