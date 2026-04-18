@@ -2,8 +2,6 @@
 -- CONFIG
 -- =========================
 
-getgenv().ONLY_EQUIPPED_KNIFE = true -- true = solo si lo tiene en mano
-
 -- =========================
 -- TOGGLE AUTO SHOOT
 -- =========================
